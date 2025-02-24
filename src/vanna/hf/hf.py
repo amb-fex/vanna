@@ -5,17 +5,28 @@ from ..base import VannaBase
 
 
 class Hf(VannaBase):
-    def __init__(self, config=None):
+     def __init__(self, config=None):
+        self.config = config or {}  # Asegurar que config no sea None
+        
         model_name_or_path = self.config.get(
             "model_name_or_path", None
         )  # e.g. meta-llama/Meta-Llama-3-8B-Instruct or local path to the model checkpoint files
-        # list of quantization methods supported by transformers package: https://huggingface.co/docs/transformers/main/en/quantization/overview
+
         quantization_config = self.config.get("quantization_config", None)
+
+        # Cargar el tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        
+        # Configurar el pad_token_id correctamente
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token  # Asignar el pad_token al eos_token
+        
+        # Cargar el modelo con la configuración correcta
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name_or_path,
             quantization_config=quantization_config,
             device_map="auto",
+            pad_token_id=self.tokenizer.pad_token_id  # Asegurar que el modelo tenga el pad_token_id
         )
 
     def system_message(self, message: str) -> any:
