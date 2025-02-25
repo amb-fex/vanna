@@ -6,26 +6,26 @@ from ..base import VannaBase
 
 class Hf(VannaBase):
     def __init__(self, config=None):
-        model_name_or_path = self.config.get(
+      model_name_or_path = self.config.get(
             "model_name_or_path", None
-        )  # e.g. meta-llama/Meta-Llama-3-8B-Instruct or local path to the model checkpoint files
+      )  # e.g. meta-llama/Meta-Llama-3-8B-Instruct or local path to the model checkpoint files
         # list of quantization methods supported by transformers package: https://huggingface.co/docs/transformers/main/en/quantization/overview
-        quantization_config = self.config.get("quantization_config", None)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
-            quantization_config=quantization_config,
-            device_map="auto",
+      quantization_config = self.config.get("quantization_config", None)
+      self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+      self.model = AutoModelForCausalLM.from_pretrained(
+          model_name_or_path,
+          quantization_config=quantization_config,
+          device_map="auto",
         )
 
     def system_message(self, message: str) -> any:
-        return {"role": "system", "content": message}
+      return {"role": "system", "content": message}
 
     def user_message(self, message: str) -> any:
-        return {"role": "user", "content": message}
+      return {"role": "user", "content": message}
 
     def assistant_message(self, message: str) -> any:
-        return {"role": "assistant", "content": message}
+      return {"role": "assistant", "content": message}
 
     def extract_sql_query(self, text):
         """
