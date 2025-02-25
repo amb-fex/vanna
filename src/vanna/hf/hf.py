@@ -5,15 +5,15 @@ from ..base import VannaBase
 
 
 class Hf(VannaBase):
-     def __init__(self, config=None):
+    def __init__(self, config=None):
         self.config = config or {}  # Asegurar que config no sea None
         
         model_name_or_path = self.config.get(
             "model_name_or_path", None
         )  # e.g. meta-llama/Meta-Llama-3-8B-Instruct or local path to the model checkpoint files
-
+    
         quantization_config = self.config.get("quantization_config", None)
-
+    
         # Cargar el tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         
@@ -28,7 +28,6 @@ class Hf(VannaBase):
             device_map="auto",
             pad_token_id=self.tokenizer.pad_token_id  # Asegurar que el modelo tenga el pad_token_id
         )
-
     def system_message(self, message: str) -> any:
         return {"role": "system", "content": message}
 
