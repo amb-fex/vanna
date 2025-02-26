@@ -1,4 +1,4 @@
-from .pgvetor.pgvector import PG_VectorStore
+from .pgvector.pgvector import PG_VectorStore
 from .modelo_amb.modelo_amb import ModeloAMB
 #from .hf import Hf
 
