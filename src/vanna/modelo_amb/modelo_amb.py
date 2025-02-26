@@ -1,7 +1,7 @@
 import re 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from ..base import VannaBase
-from vector_store import vector_store
+from .vector_store import vector_store
 
 # Esta clase se trata de un archivo constumisa del hf (modelo hugging face) en vanna. 
 
