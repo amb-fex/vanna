@@ -22,68 +22,6 @@ class ModeloAMB(VannaBase):
             device_map="auto",
         )
 
-        # Conectar con PG_VectorStore
-        #self.vector_store = vector_store
-
-    #  Implementación de los métodos abstractos requeridos por VannaBase
-'''
-
-    def generate_embedding(self, data: str, **kwargs) -> list:
-        """
-        Genera embeddings para almacenar consultas en la base de datos vectorial.
-        """
-        return []  # Aquí puedes integrar un modelo de embeddings real si es necesario.
-
-    def get_similar_question_sql(self, question: str, **kwargs) -> list:
-        """
-        Obtiene SQLs similares desde PG_VectorStore.
-        """
-        return self.vector_store.get_similar_question_sql(question)
-
-    def get_related_ddl(self, question: str, **kwargs) -> list:
-        """
-        Obtiene DDLs relacionados desde PG_VectorStore.
-        """
-        return self.vector_store.get_related_ddl(question)
-
-    def get_related_documentation(self, question: str, **kwargs) -> list:
-        """
-        Obtiene documentación relacionada desde PG_VectorStore.
-        """
-        return self.vector_store.get_related_documentation(question)
-
-    def add_question_sql(self, question: str, sql: str, **kwargs) -> str:
-        """
-        Agrega una consulta SQL al almacenamiento vectorial.
-        """
-        return self.vector_store.add_question_sql(question, sql)
-
-    def add_ddl(self, ddl: str, **kwargs) -> str:
-        """
-        Agrega una declaración DDL al almacenamiento vectorial.
-        """
-        return self.vector_store.add_ddl(ddl)
-
-    def add_documentation(self, documentation: str, **kwargs) -> str:
-        """
-        Agrega documentación a la base de datos vectorial.
-        """
-        return self.vector_store.add_documentation(documentation)
-
-    def get_training_data(self, **kwargs) -> list:
-        """
-        Obtiene los datos de entrenamiento almacenados en PG_VectorStore.
-        """
-        return self.vector_store.get_training_data()
-
-    def remove_training_data(self, id: str, **kwargs) -> bool:
-        """
-        Elimina un conjunto de datos de entrenamiento del almacenamiento vectorial.
-        """
-        return self.vector_store.remove_training_data(id)
-      
-    '''
-
     def system_message(self, message: str) -> dict:
         return {"role": "system", "content": message}
 
@@ -147,3 +85,65 @@ class ModeloAMB(VannaBase):
         self.log(response)
 
         return response
+
+        # Conectar con PG_VectorStore
+        #self.vector_store = vector_store
+
+    #  Implementación de los métodos abstractos requeridos por VannaBase
+'''
+
+    def generate_embedding(self, data: str, **kwargs) -> list:
+        """
+        Genera embeddings para almacenar consultas en la base de datos vectorial.
+        """
+        return []  # Aquí puedes integrar un modelo de embeddings real si es necesario.
+
+    def get_similar_question_sql(self, question: str, **kwargs) -> list:
+        """
+        Obtiene SQLs similares desde PG_VectorStore.
+        """
+        return self.vector_store.get_similar_question_sql(question)
+
+    def get_related_ddl(self, question: str, **kwargs) -> list:
+        """
+        Obtiene DDLs relacionados desde PG_VectorStore.
+        """
+        return self.vector_store.get_related_ddl(question)
+
+    def get_related_documentation(self, question: str, **kwargs) -> list:
+        """
+        Obtiene documentación relacionada desde PG_VectorStore.
+        """
+        return self.vector_store.get_related_documentation(question)
+
+    def add_question_sql(self, question: str, sql: str, **kwargs) -> str:
+        """
+        Agrega una consulta SQL al almacenamiento vectorial.
+        """
+        return self.vector_store.add_question_sql(question, sql)
+
+    def add_ddl(self, ddl: str, **kwargs) -> str:
+        """
+        Agrega una declaración DDL al almacenamiento vectorial.
+        """
+        return self.vector_store.add_ddl(ddl)
+
+    def add_documentation(self, documentation: str, **kwargs) -> str:
+        """
+        Agrega documentación a la base de datos vectorial.
+        """
+        return self.vector_store.add_documentation(documentation)
+
+    def get_training_data(self, **kwargs) -> list:
+        """
+        Obtiene los datos de entrenamiento almacenados en PG_VectorStore.
+        """
+        return self.vector_store.get_training_data()
+
+    def remove_training_data(self, id: str, **kwargs) -> bool:
+        """
+        Elimina un conjunto de datos de entrenamiento del almacenamiento vectorial.
+        """
+        return self.vector_store.remove_training_data(id)
+      
+    '''
