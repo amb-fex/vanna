@@ -1,6 +1,6 @@
-from vanna.pgvector import PG_VectorStore
-from modelo_amb import ModeloAMB
-#from vanna.hf import Hf
+from pgvetor.pgvector import PG_VectorStore
+from modelo_amb.modelo_amb import ModeloAMB
+#from .hf import Hf
 
 class AmbVanna(PG_VectorStore, ModeloAMB):
     def __init__(self, config=None):
