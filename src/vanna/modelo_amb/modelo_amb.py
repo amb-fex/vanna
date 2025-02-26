@@ -39,7 +39,7 @@ class ModeloAMB(VannaBase):
         sql = super().extract_sql(text)
         return sql.replace("\\_", "_").replace("\\", "")
 
-      def generate_sql(self, question: str, **kwargs) -> str:
+    def generate_sql(self, question: str, **kwargs) -> str:
         # Use the super generate_sql
         sql = super().generate_sql(question, **kwargs)
 
@@ -50,7 +50,7 @@ class ModeloAMB(VannaBase):
 
         return self.extract_sql_query(sql)
 
-      def submit_prompt(self, prompt, **kwargs) -> str:
+    def submit_prompt(self, prompt, **kwargs) -> str:
         """
         Envía un prompt al modelo de lenguaje y devuelve la respuesta generada.
         """
