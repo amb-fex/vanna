@@ -39,32 +39,18 @@ class ModeloAMB(VannaBase):
         sql = super().extract_sql(text)
         return sql.replace("\\_", "_").replace("\\", "")
 
-    def generate_sql(self, question: str, **kwargs) -> str:
-        """
-        Genera SQL utilizando el LLM y almacena la consulta en PG_VectorStore.
-        Antes de generar, revisa si hay una consulta similar en la base vectorial.
-        """
-        try:
-            # Buscar en PG_VectorStore si existe una consulta similar
-            similar_sqls = self.vector_store.get_similar_question_sql(question)
-            if similar_sqls:
-                return similar_sqls[0]["sql"]  # Devuelve la primera coincidencia
+      def generate_sql(self, question: str, **kwargs) -> str:
+        # Use the super generate_sql
+        sql = super().generate_sql(question, **kwargs)
 
-            # Si no hay consultas previas, generamos una nueva con el LLM
-            prompt = f"Genera una consulta SQL para la siguiente pregunta:\n{question}"
-            sql = self.submit_prompt(prompt)
-            sql = self.extract_sql_query(sql)
+        # Replace "\_" with "_"
+        sql = sql.replace("\\_", "_")
 
-            # Almacenar la nueva consulta SQL en PG_VectorStore
-            self.vector_store.add_question_sql(question, sql)
+        sql = sql.replace("\\", "")
 
-            return sql
+        return self.extract_sql_query(sql)
 
-        except Exception as e:
-            print(f" Error en 'generate_sql': {e}")
-            return "Error al generar la consulta SQL."
-
-    def submit_prompt(self, prompt, **kwargs) -> str:
+      def submit_prompt(self, prompt, **kwargs) -> str:
         """
         Envía un prompt al modelo de lenguaje y devuelve la respuesta generada.
         """
