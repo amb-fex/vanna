@@ -26,6 +26,7 @@ class ModeloAMB(VannaBase):
         #self.vector_store = vector_store
 
     #  Implementación de los métodos abstractos requeridos por VannaBase
+'''
 
     def generate_embedding(self, data: str, **kwargs) -> list:
         """
@@ -80,6 +81,8 @@ class ModeloAMB(VannaBase):
         Elimina un conjunto de datos de entrenamiento del almacenamiento vectorial.
         """
         return self.vector_store.remove_training_data(id)
+      
+    '''
 
     def system_message(self, message: str) -> dict:
         return {"role": "system", "content": message}
