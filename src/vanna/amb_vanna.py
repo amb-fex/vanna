@@ -1,5 +1,5 @@
-from pgvetor.pgvector import PG_VectorStore
-from modelo_amb.modelo_amb import ModeloAMB
+from .pgvetor.pgvector import PG_VectorStore
+from .modelo_amb.modelo_amb import ModeloAMB
 #from .hf import Hf
 
 class AmbVanna(PG_VectorStore, ModeloAMB):
