@@ -14,14 +14,25 @@ class ModeloAMB(VannaBase):
         super().__init__(config)  # Inicializa VannaBase
 
         model_name_or_path = config.get("model_name_or_path")
-        quantization_config = config.get("quantization_config", None)
+        token = config.get("token")
+        quantization_config = config.get("quantization_config", {})
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name_or_path,
-            quantization_config=quantization_config,
-            device_map="auto",
-        )
+        # Carga del tokenizer con o sin token
+        if token:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=token)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+        # Carga del modelo con manejo de cuantización si es necesario
+        model_params = {
+            "device_map": "auto",
+            "use_auth_token": token if token else None
+        }
+
+        # Agregar configuraciones de cuantización solo si están definidas
+        model_params.update(quantization_config) if quantization_config else None
+
+        self.model = AutoModelForCausalLM.from_pretrained(model_name_or_path, **model_params)
 
     def system_message(self, message: str) -> dict:
         return {"role": "system", "content": message}
