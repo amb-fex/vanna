@@ -26,8 +26,8 @@ class ModeloAMB(VannaBase):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
         # Asegurar que el tokenizer tenga una plantilla de chat
-        if not hasattr(self.tokenizer, "chat_template") or self.tokenizer.chat_template is None:
-            self.tokenizer.chat_template = "<s> {message} </s>"
+        #if not hasattr(self.tokenizer, "chat_template") or self.tokenizer.chat_template is None:
+            #self.tokenizer.chat_template = "<s> {message} </s>"
 
         # Carga del modelo con manejo de cuantización si es necesario
         model_params = {
