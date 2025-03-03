@@ -22,6 +22,8 @@ class ModeloAMB(VannaBase):
             self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_auth_token=token)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+        if not self.tokenizer.chat_template:
+            self.tokenizer.chat_template = "<s> {message} </s>"
 
         # Carga del modelo con manejo de cuantización si es necesario
         model_params = {
