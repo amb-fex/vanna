@@ -1,5 +1,6 @@
 from .pgvector.pgvector import PG_VectorStore
 from .modelo_amb.modelo_amb import ModeloAMB
+import sentencepiece
 #from .hf import Hf
 
 class AmbVanna(PG_VectorStore, ModeloAMB):
