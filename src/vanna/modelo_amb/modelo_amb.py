@@ -8,6 +8,9 @@ from .vector_store import vector_store
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
+from transformers import AutoTokenizer, AutoModelForCausalLM
+from vanna import VannaBase  # Asegúrate de importar VannaBase correctamente
+
 class ModeloAMB(VannaBase):
     def __init__(self, config=None):
         if config is None:
@@ -25,22 +28,14 @@ class ModeloAMB(VannaBase):
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
-        # Asegurar que el tokenizer tenga una plantilla de chat
-        #if not hasattr(self.tokenizer, "chat_template") or self.tokenizer.chat_template is None:
-            #self.tokenizer.chat_template = "<s> {message} </s>"
-
         # Carga del modelo con manejo de cuantización si es necesario
         model_params = {
-            "device_map": "auto"
+            "device_map": "auto",
+            "use_auth_token": token if token else None
         }
 
-        # Agregar token de autenticación si es necesario
-        if token:
-            model_params["use_auth_token"] = token
-
-        # Agregar configuraciones de cuantización si están definidas
-        if quantization_config:
-            model_params.update(quantization_config)
+        # Agregar configuraciones de cuantización solo si están definidas
+        model_params.update(quantization_config) if quantization_config else None
 
         self.model = AutoModelForCausalLM.from_pretrained(model_name_or_path, **model_params)
 
