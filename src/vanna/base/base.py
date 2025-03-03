@@ -378,7 +378,7 @@ class VannaBase(ABC):
             question (str): The question to get similar questions and their corresponding SQL statements for.
 
         Returns:
-            list: A list of similar questions and their corresponding SQL statements.
+            list: A list of unique similar questions and their corresponding SQL statements.
         """
         pass
 
@@ -646,7 +646,7 @@ class VannaBase(ABC):
         message_log = [self.system_message(initial_prompt)]
         message_log.append(
             self.user_message(
-                "Generate a list of followup questions that the user might ask about this data. Respond with a list of questions, one per line. Do not answer with any explanations -- just the questions."
+                "Generate a list of unique followup questions that the user might ask about this data. Respond with a list of questions, one per line. Do not answer with any explanations -- just the unique questions."
             )
         )
 
