@@ -1663,7 +1663,7 @@ class VannaBase(ABC):
             "You need to connect to a database first by running vn.connect_to_snowflake(), vn.connect_to_postgres(), similar function, or manually set vn.run_sql"
         )
 
-     def ask(
+    def ask(
       self,
       question: Union[str, None] = None,
       print_results: bool = True,
