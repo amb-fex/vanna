@@ -36,6 +36,12 @@ from .types import (
 )
 from .vannadb import VannaDB_VectorStore
 
+import plotly
+import plotly.graph_objs as go
+import pandas as pd
+import traceback
+from typing import Union, Tuple
+
 
 class VannaDefault(VannaDB_VectorStore):
     def __init__(self, model: str, api_key: str, config=None):
