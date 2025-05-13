@@ -1663,118 +1663,119 @@ class VannaBase(ABC):
             "You need to connect to a database first by running vn.connect_to_snowflake(), vn.connect_to_postgres(), similar function, or manually set vn.run_sql"
         )
 
-    def ask(
-        self,
-        question: Union[str, None] = None,
-        print_results: bool = True,
-        auto_train: bool = True,
-        visualize: bool = True,  # if False, will not generate plotly code
-        allow_llm_to_see_data: bool = False,
-    ) -> Union[
-        Tuple[
-            Union[str, None],
-            Union[pd.DataFrame, None],
-            Union[plotly.graph_objs.Figure, None],
-        ],
-        None,
-    ]:
-        """
-        **Example:**
-        ```python
-        vn.ask("What are the top 10 customers by sales?")
-        ```
+   def ask(
+    self,
+    question: Union[str, None] = None,
+    print_results: bool = True,
+    auto_train: bool = True,
+    visualize: bool = True,
+    allow_llm_to_see_data: bool = False,
+) -> Union[
+    Tuple[
+        Union[str, None],
+        Union[pd.DataFrame, None],
+        Union[plotly.graph_objs.Figure, None],
+    ],
+    None,
+]:
+    if question is None:
+        question = input("Enter a question: ")
 
-        Ask Vanna.AI a question and get the SQL query that answers it.
+    comentario_sql = None
 
-        Args:
-            question (str): The question to ask.
-            print_results (bool): Whether to print the results of the SQL query.
-            auto_train (bool): Whether to automatically train Vanna.AI on the question and SQL query.
-            visualize (bool): Whether to generate plotly code and display the plotly figure.
+    try:
+        sql = self.generate_sql(question=question, allow_llm_to_see_data=allow_llm_to_see_data)
 
-        Returns:
-            Tuple[str, pd.DataFrame, plotly.graph_objs.Figure]: The SQL query, the results of the SQL query, and the plotly figure.
-        """
+        # Iteración sobre comentarios de SQL
+        refinado = True
+        while refinado:
+            refinado = False
+            respuesta = input("¿Quieres comentar o corregir la SQL generada? (s/n): ").strip().lower()
+            if respuesta == "s":
+                comentario_sql = input("Escribe tu comentario o corrección:\n")
+                if comentario_sql:
+                    question = self.generate_rewritten_question(question, comentario_sql)
+                    sql = self.generate_sql(question=question, allow_llm_to_see_data=allow_llm_to_see_data)
+                    if print_results:
+                        print("SQL actualizada:\n", sql)
+                    refinado = True
 
-        if question is None:
-            question = input("Enter a question: ")
+    except Exception as e:
+        print(e)
+        return None, None, None
 
+    if print_results:
         try:
-            sql = self.generate_sql(question=question, allow_llm_to_see_data=allow_llm_to_see_data)
-        except Exception as e:
-            print(e)
-            return None, None, None
+            Code = __import__("IPython.display", fromList=["Code"]).Code
+            display(Code(sql))
+        except Exception:
+            print(sql)
+
+    if self.run_sql_is_set is False:
+        print("If you want to run the SQL query, connect to a database first.")
+        return (None if print_results else (sql, None, None))
+
+    try:
+        df = self.run_sql(sql)
 
         if print_results:
             try:
-                Code = __import__("IPython.display", fromList=["Code"]).Code
-                display(Code(sql))
+                display = __import__("IPython.display", fromList=["display"]).display
+                display(df)
+            except Exception:
+                print(df)
+
+        if len(df) > 0 and auto_train:
+            self.add_question_sql(question=question, sql=sql)
+
+        if visualize:
+            comentario_plot = None
+            try:
+                plotly_code = self.generate_plotly_code(
+                    question=question,
+                    sql=sql,
+                    df_metadata=f"Running df.dtypes gives:\n {df.dtypes}",
+                )
+                fig = self.get_plotly_figure(plotly_code=plotly_code, df=df)
+
+                # Iteración sobre mejoras del gráfico
+                refinado_plot = True
+                while refinado_plot:
+                    refinado_plot = False
+                    respuesta_plot = input("¿Quieres hacer cambios en el gráfico? (s/n): ").strip().lower()
+                    if respuesta_plot == "s":
+                        comentario_plot = input("Describe el cambio que quieres (e.g. colores, leyenda...):\n")
+                        if comentario_plot:
+                            plotly_code = self.submit_prompt([
+                                self.system_message(f"El DataFrame es:\n{df.head(10).to_markdown()}"),
+                                self.user_message(f"Código actual de la gráfica:\n```python\n{plotly_code}\n```\nQuiero hacer este cambio: {comentario_plot}. Devuélveme solo el nuevo código Plotly.")
+                            ])
+                            plotly_code = self._sanitize_plotly_code(self._extract_python_code(plotly_code))
+                            fig = self.get_plotly_figure(plotly_code=plotly_code, df=df)
+                            refinado_plot = True
+
+                if print_results:
+                    try:
+                        display = __import__("IPython.display", fromlist=["display"]).display
+                        Image = __import__("IPython.display", fromlist=["Image"]).Image
+                        img_bytes = fig.to_image(format="png", scale=2)
+                        display(Image(img_bytes))
+                    except Exception:
+                        fig.show()
+
+                return sql, df, fig
+
             except Exception as e:
-                print(sql)
+                traceback.print_exc()
+                print("Couldn't run plotly code: ", e)
+                return (None if print_results else (sql, df, None))
+        else:
+            return sql, df, None
 
-        if self.run_sql_is_set is False:
-            print(
-                "If you want to run the SQL query, connect to a database first."
-            )
+    except Exception as e:
+        print("Couldn't run sql: ", e)
+        return (None if print_results else (sql, None, None))
 
-            if print_results:
-                return None
-            else:
-                return sql, None, None
-
-        try:
-            df = self.run_sql(sql)
-
-            if print_results:
-                try:
-                    display = __import__(
-                        "IPython.display", fromList=["display"]
-                    ).display
-                    display(df)
-                except Exception as e:
-                    print(df)
-
-            if len(df) > 0 and auto_train:
-                self.add_question_sql(question=question, sql=sql)
-            # Only generate plotly code if visualize is True
-            if visualize:
-                try:
-                    plotly_code = self.generate_plotly_code(
-                        question=question,
-                        sql=sql,
-                        df_metadata=f"Running df.dtypes gives:\n {df.dtypes}",
-                    )
-                    fig = self.get_plotly_figure(plotly_code=plotly_code, df=df)
-                    if print_results:
-                        try:
-                            display = __import__(
-                                "IPython.display", fromlist=["display"]
-                            ).display
-                            Image = __import__(
-                                "IPython.display", fromlist=["Image"]
-                            ).Image
-                            img_bytes = fig.to_image(format="png", scale=2)
-                            display(Image(img_bytes))
-                        except Exception as e:
-                            fig.show()
-                except Exception as e:
-                    # Print stack trace
-                    traceback.print_exc()
-                    print("Couldn't run plotly code: ", e)
-                    if print_results:
-                        return None
-                    else:
-                        return sql, df, None
-            else:
-                return sql, df, None
-
-        except Exception as e:
-            print("Couldn't run sql: ", e)
-            if print_results:
-                return None
-            else:
-                return sql, None, None
-        return sql, df, fig
 
     def train(
         self,
