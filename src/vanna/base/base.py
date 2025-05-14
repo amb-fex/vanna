@@ -256,81 +256,139 @@ class VannaBase(ABC):
 
         return False
 
-    def generate_rewritten_question(self, last_question: str, new_question: str, **kwargs) -> str:
+    def generate_rewritten_question(self, last_question: str, last_sql: str, new_input: str, **kwargs) -> str:
         """
-        **Example:**
-        ```python
-        rewritten_question = vn.generate_rewritten_question("Who are the top 5 customers by sales?", "Show me their email addresses")
-        ```
-
-        Generate a rewritten question by combining the last question and the new question if they are related. If the new question is self-contained and not related to the last question, return the new question.
-
+        Reescriu o actualitza una pregunta a partir d’un nou input que pot ser una aclariment, 
+        una correcció o un seguiment, utilitzant tant la pregunta original com la seva SQL per donar context.
+    
         Args:
-            last_question (str): The previous question that was asked.
-            new_question (str): The new question to be combined with the last question.
-            **kwargs: Additional keyword arguments.
-
+            last_question (str): La pregunta original que va fer l’usuari.
+            last_sql (str): La consulta SQL que es va generar a partir de la pregunta original.
+            new_input (str): El nou input de l’usuari (pot ser una correcció, aclariment o pregunta relacionada).
+            **kwargs: Arguments addicionals opcionals.
+    
         Returns:
-            str: The combined question if related, otherwise the new question.
+            str: Una nova pregunta o instrucció clara i coherent que reflecteixi la intenció actualitzada de l’usuari.
         """
-        if last_question is None:
-            return new_question
+        if not last_question and not last_sql:
+            return new_input
+  
+      prompt = [
+          self.system_message(
+              "Ets un assistent de dades que ajuda a l’usuari a interactuar amb una base de dades. "
+              "L’usuari ha fet anteriorment una pregunta que ha generat una consulta SQL. Ara introdueix un nou input, "
+              "que pot ser una aclariment, una correcció o un seguiment de la pregunta o de la consulta SQL anterior. "
+              "Reformula aquest nou input en una nova pregunta o instrucció completa i clara que reflecteixi la seva intenció actual. "
+              "La nova pregunta ha de poder-se convertir en una consulta SQL. Respon només amb la nova pregunta reformulada, sense explicacions."
+          ),
+          self.user_message(
+              f"Pregunta anterior: {last_question}\n"
+              f"Consulta SQL anterior:\n{last_sql}\n"
+              f"Nou input: {new_input}"
+          )
+      ]
+  
+      return self.submit_prompt(prompt=prompt, **kwargs)
 
-        prompt = [
-            self.system_message("Your goal is to combine a sequence of questions into a singular question if they are related. If the second question does not relate to the first question and is fully self-contained, return the second question. Return just the new combined question with no additional explanations. The question should theoretically be answerable with a single SQL statement."),
-            self.user_message("First question: " + last_question + "\nSecond question: " + new_question),
-        ]
+def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, new_input: str, df: pd.DataFrame, **kwargs) -> str:
+    """
+    Reescriu o modifica una instrucció per generar una gràfica Plotly, tenint en compte el codi anterior,
+    la pregunta inicial, el nou comentari de l’usuari i el DataFrame de dades utilitzat.
 
-        return self.submit_prompt(prompt=prompt, **kwargs)
+    Args:
+        last_question (str): La pregunta original que va generar el gràfic.
+        last_plotly_code (str): El codi Plotly anterior.
+        new_input (str): Nou comentari de l’usuari (correcció o canvi al gràfic).
+        df (pd.DataFrame): El DataFrame que es va usar per generar la gràfica.
+        **kwargs: Arguments opcionals.
 
-    def generate_followup_questions(
-        self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
-    ) -> list:
-        """
-        **Example:**
-        ```python
-        vn.generate_followup_questions("What are the top 10 customers by sales?", sql, df)
-        ```
+    Returns:
+        str: Una nova instrucció reformulada per generar una gràfica millorada o corregida.
+    """
+    if not last_question and not last_plotly_code:
+        return new_input
 
-        Generate a list of followup questions that you can ask Vanna.AI.
+    prompt = [
+        self.system_message(
+            "Ets un assistent que ajuda a generar i modificar gràfiques amb Plotly. "
+            "A continuació tens una pregunta de l’usuari, el codi Plotly que es va generar, "
+            "un DataFrame de dades, i un nou comentari de l’usuari. Reformula aquest comentari com una nova instrucció clara i completa "
+            "per generar una gràfica que reflecteixi la seva intenció actual. No afegeixis explicacions."
+        ),
+        self.user_message(
+            f"Pregunta inicial: {last_question}\n"
+            f"Codi Plotly anterior:\n{last_plotly_code}\n"
+            f"DataFrame:\n{df.head(10).to_markdown(index=False)}\n"
+            f"Comentari de l’usuari: {new_input}"
+        )
+    ]
 
-        Args:
-            question (str): The question that was asked.
-            sql (str): The LLM-generated SQL query.
-            df (pd.DataFrame): The results of the SQL query.
-            n_questions (int): Number of follow-up questions to generate.
+    return self.submit_prompt(prompt=prompt, **kwargs)
+  
 
-        Returns:
-            list: A list of followup questions that you can ask Vanna.AI.
-        """
+    
+def generate_followup_questions(
+    self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
+) -> list:
+    """
+    Genera una llista de preguntes de seguiment, assegurant que siguin 5, úniques i realment preguntes.
 
-        message_log = [
-            self.system_message(
-                f"You are a helpful data assistant. The user asked the question: '{question}'\n\nThe SQL query for this question was: {sql}\n\nThe following is a pandas DataFrame with the results of the query: \n{df.head(25).to_markdown()}\n\n"
-            ),
-            self.user_message(
-                f"Generate a list of {n_questions} followup questions that the user might ask about this data. Respond with a list of questions, one per line. Do not answer with any explanations -- just the questions. Remember that there should be an unambiguous SQL query that can be generated from the question. Prefer questions that are answerable outside of the context of this conversation. Prefer questions that are slight modifications of the SQL query that was generated that allow digging deeper into the data. Each question will be turned into a button that the user can click to generate a new SQL query so don't use 'example' type questions. Each question must have a one-to-one correspondence with an instantiated SQL query." +
-                self._response_language()
-            ),
-        ]
+    Args:
+        question (str): Pregunta original.
+        sql (str): Consulta SQL generada.
+        df (pd.DataFrame): Resultats de la consulta.
+        n_questions (int): Número de preguntes de seguiment desitjades.
 
-        llm_response = self.submit_prompt(message_log, **kwargs)
+    Returns:
+        list: Llista amb 5 preguntes úniques i vàlides.
+    """
+    message_log = [
+        self.system_message(
+            f"Ets un assistent de dades. L’usuari ha preguntat: '{question}'\n\n"
+            f"La consulta SQL generada és:\n{sql}\n\n"
+            f"El següent és un DataFrame amb els resultats:\n{df.head(25).to_markdown(index=False)}\n\n"
+        ),
+        self.user_message(
+            f"Genera una llista de {n_questions} preguntes de seguiment relacionades amb aquesta consulta i resultats. "
+            f"Cada línia ha de ser una pregunta clara, amb resposta possible via SQL. Evita instruccions, codi o frases que no siguin preguntes."
+        )
+    ]
 
-        numbers_removed = re.sub(r"^\d+\.\s*", "", llm_response, flags=re.MULTILINE)
-        return numbers_removed.split("\n")
+    llm_response = self.submit_prompt(message_log, **kwargs)
 
-    def generate_questions(self, **kwargs) -> List[str]:
-        """
-        **Example:**
-        ```python
-        vn.generate_questions()
-        ```
+    # Dividir en línies
+    lines = llm_response.strip().split("\n")
 
-        Generate a list of questions that you can ask Vanna.AI.
-        """
-        question_sql = self.get_similar_question_sql(question="", **kwargs)
+    # Netejar numeració i espais
+    cleaned = [re.sub(r"^\d+\.\s*", "", line).strip() for line in lines]
 
-        return [q["question"] for q in question_sql]
+    # Filtrar només preguntes (acaben amb '?')
+    questions_only = [q for q in cleaned if q.endswith("?")]
+
+    # Eliminar duplicats mantenint ordre
+    seen = set()
+    unique_questions = []
+    for q in questions_only:
+        if q not in seen:
+            unique_questions.append(q)
+            seen.add(q)
+
+    # Retornar exactament n preguntes
+    return unique_questions[:n_questions]
+
+  def generate_questions(self, **kwargs) -> List[str]:
+      """
+      **Exemple:**
+      ```python
+      vn.generate_questions()
+      ```
+  
+      Genera una llista de preguntes que pots fer al teu assistent Vanna.
+      Es limita a un màxim de 5 preguntes.
+      """
+      preguntes_sql = self.get_similar_question_sql(question="", **kwargs)
+  
+      return [q["question"] for q in preguntes_sql[:5]]
 
     def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
         """
