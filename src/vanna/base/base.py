@@ -255,7 +255,7 @@ class VannaBase(ABC):
             return True
 
         return False
-
+    
     def generate_rewritten_question(self, last_question: str, last_sql: str, new_input: str, **kwargs) -> str:
         """
         Reescriu o actualitza una pregunta a partir d’un nou input que pot ser una aclariment, 
@@ -273,22 +273,22 @@ class VannaBase(ABC):
         if not last_question and not last_sql:
             return new_input
   
-      prompt = [
-          self.system_message(
-              "Ets un assistent de dades que ajuda a l’usuari a interactuar amb una base de dades. "
-              "L’usuari ha fet anteriorment una pregunta que ha generat una consulta SQL. Ara introdueix un nou input, "
-              "que pot ser una aclariment, una correcció o un seguiment de la pregunta o de la consulta SQL anterior. "
-              "Reformula aquest nou input en una nova pregunta o instrucció completa i clara que reflecteixi la seva intenció actual. "
-              "La nova pregunta ha de poder-se convertir en una consulta SQL. Respon només amb la nova pregunta reformulada, sense explicacions."
-          ),
-          self.user_message(
-              f"Pregunta anterior: {last_question}\n"
-              f"Consulta SQL anterior:\n{last_sql}\n"
-              f"Nou input: {new_input}"
-          )
-      ]
+        prompt = [
+            self.system_message(
+                "Ets un assistent de dades que ajuda a l’usuari a interactuar amb una base de dades. "
+                "L’usuari ha fet anteriorment una pregunta que ha generat una consulta SQL. Ara introdueix un nou input, "
+                "que pot ser una aclariment, una correcció o un seguiment de la pregunta o de la consulta SQL anterior. "
+                "Reformula aquest nou input en una nova pregunta o instrucció completa i clara que reflecteixi la seva intenció actual. "
+                "La nova pregunta ha de poder-se convertir en una consulta SQL. Respon només amb la nova pregunta reformulada, sense explicacions."
+            ),
+            self.user_message(
+                f"Pregunta anterior: {last_question}\n"
+                f"Consulta SQL anterior:\n{last_sql}\n"
+                f"Nou input: {new_input}"
+            )
+        ]
   
-      return self.submit_prompt(prompt=prompt, **kwargs)
+    return self.submit_prompt(prompt=prompt, **kwargs)
 
 def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, new_input: str, df: pd.DataFrame, **kwargs) -> str:
     """
@@ -376,7 +376,7 @@ def generate_followup_questions(
     # Retornar exactament n preguntes
     return unique_questions[:n_questions]
 
-  def generate_questions(self, **kwargs) -> List[str]:
+def generate_questions(self, **kwargs) -> List[str]:
       """
       **Exemple:**
       ```python
@@ -390,7 +390,7 @@ def generate_followup_questions(
   
       return [q["question"] for q in preguntes_sql[:5]]
 
-    def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
+def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
         """
         **Example:**
         ```python
