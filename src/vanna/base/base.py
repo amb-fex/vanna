@@ -324,8 +324,127 @@ def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, n
     ]
 
     return self.submit_prompt(prompt=prompt, **kwargs)
-  
 
+    def should_generate_map(self, question: str, sql: str, df: pd.DataFrame) -> bool:
+        """
+        Determina si se debe generar un mapa a partir de:
+        - La presencia de palabras clave en la pregunta
+        - La aparición de tablas relevantes (como 'fulls' 'divisions_administratives' 'districtes_barcelona') en la SQL
+        - La presencia de columnas geográficas (lat/lon o geom)
+
+        Returns:
+            True si se debería generar un mapa, False en caso contrario.
+        """
+        # Palabras clave que indican intención de mapa
+        map_keywords = [
+            "On es", "mapa", "map", "mappa", "mapeo", "geovisual", "localización", "Mostra la distribució espacial" , "On descarreguen"
+            "ubicació", "localisation", "cartografía", "leaflet", "choropleth", "municipis", "districtes"
+            "heatmap", "punt", "polígon", "marker", "territori", "capes", "coordenadas",
+            "geom", "geometría", "lat", "lon", "lng", "longitud", "latitud"
+        ]
+
+        # Limpia y baja a minúscula la pregunta
+        question_lower = question.lower()
+
+        # Verifica si alguna palabra clave aparece en la pregunta
+        if any(kw in question_lower for kw in map_keywords):
+            return True
+
+        # Verifica si la tabla 'fulls' aparece en la SQL
+        if "from fulls" in sql.lower() or "join fulls" in sql.lower():
+            return True
+
+        # columnas específicas
+        geo_cols = ["lat", "latitude", "lon", "long", "lng", "geometry", "geom"  "nommuni", "distrites", "centroid_geom"]
+        if df is not None and any(col.lower() in geo_cols for col in df.columns):
+            return True
+
+        return False
+
+
+    def generate_rewritten_question(
+        self, last_question: str, last_sql: str, new_input: str, df: pd.DataFrame, **kwargs
+    ) -> str:
+        """
+        Reescriu o actualitza una pregunta a partir d’un nou input que pot ser una aclariment, 
+        una correcció o un seguiment, utilitzant la pregunta original, la SQL i una mostra del resultat (DataFrame).
+        
+        Args:
+            last_question (str): La pregunta original de l’usuari.
+            last_sql (str): La consulta SQL que es va generar.
+            new_input (str): El nou input de l’usuari (comentari, aclariment, etc.).
+            df (pd.DataFrame): Resultat de la consulta SQL.
+            **kwargs: Arguments opcionals.
+        
+        Returns:
+            str: Una nova pregunta reformulada que reflecteixi la intenció actualitzada de l’usuari.
+        """
+        if not last_question and not last_sql:
+            return new_input
+
+        # Excloure columnes amb valors massa llargs (com 'geom' o WKB)
+        max_len = 200
+        filtered_df = df[[col for col in df.columns if df[col].astype(str).map(len).max() < max_len]].copy()
+
+        # Previsualitzar només les primeres 5 files i 5 columnes
+        df_preview = (
+            filtered_df.iloc[:5, :5].to_markdown(index=False)
+            if not filtered_df.empty else "No hi ha dades per mostrar."
+        )
+
+        prompt = [
+            self.system_message(
+                "Ets un assistent de dades que ajuda a l’usuari a interactuar amb una base de dades. "
+                "L’usuari ha fet una pregunta que ha generat una consulta SQL i un resultat. Ara proporciona un nou input "
+                "que pot ser una aclariment o correcció. Reformula aquest input com una nova pregunta clara i completa. "
+                "La nova pregunta ha de poder-se convertir en una nova consulta SQL. Respon només amb la pregunta reformulada, sense explicacions."
+            ),
+            self.user_message(
+                f"Pregunta anterior: {last_question}\n"
+                f"Consulta SQL anterior:\n{last_sql}\n"
+                f"Resultat (mostra parcial):\n{df_preview}\n"
+                f"Nou input: {new_input}"
+            )
+        ]   
+
+        return self.submit_prompt(prompt=prompt, **kwargs)
+
+
+    def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, new_input: str, df: pd.DataFrame, **kwargs) -> str:
+        """
+        Reescriu o modifica una instrucció per generar una gràfica Plotly, tenint en compte el codi anterior,
+        la pregunta inicial, el nou comentari de l’usuari i el DataFrame de dades utilitzat.
+
+        Args:
+            last_question (str): La pregunta original que va generar el gràfic.
+            last_plotly_code (str): El codi Plotly anterior.
+            new_input (str): Nou comentari de l’usuari (correcció o canvi al gràfic).
+            df (pd.DataFrame): El DataFrame que es va usar per generar la gràfica.
+            **kwargs: Arguments opcionals.
+
+        Returns:
+            str: Una nova instrucció reformulada per generar una gràfica millorada o corregida.
+        """
+        if not last_question and not last_plotly_code:
+            return new_input
+
+        prompt = [
+            self.system_message(
+                "Ets un assistent que ajuda a generar i modificar gràfiques amb Plotly. "
+                "A continuació tens una pregunta de l’usuari, el codi Plotly que es va generar, "
+                "un DataFrame de dades, i un nou comentari de l’usuari. Reformula aquest comentari com una nova instrucció clara i completa "
+                "per generar una gràfica que reflecteixi la seva intenció actual. No afegeixis explicacions."
+            ),
+            self.user_message(
+                f"Pregunta inicial: {last_question}\n"
+                f"Codi Plotly anterior:\n{last_plotly_code}\n"
+                f"DataFrame:\n{df.head(10).to_markdown(index=False)}\n"
+                f"Comentari de l’usuari: {new_input}"
+            )
+        ]
+
+        return self.submit_prompt(prompt=prompt, **kwargs)
+    
     
 def generate_followup_questions(
     self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
