@@ -893,22 +893,46 @@ def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
           return plotly_code
   
       def generate_plotly_code(
-          self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs
+          self, question: str = None, sql: str = None, df_metadata: str = None, chart_type: str = None, **kwargs
       ) -> str:
           if question is not None:
-              system_msg = f"The following is a pandas DataFrame that contains the results of the query that answers the question the user asked: '{question}'"
+              system_msg = f"Tens un DataFrame de pandas que conté els resultats de la consulta SQL relacionada amb la pregunta: '{question}'"
           else:
-              system_msg = "The following is a pandas DataFrame "
+              system_msg = "Tens un DataFrame de pandas amb resultats analítics."
   
           if sql is not None:
-              system_msg += f"\n\nThe DataFrame was produced using this query: {sql}\n\n"
+              system_msg += f"\n\nEl DataFrame s’ha generat a partir de la següent consulta SQL:\n{sql}\n"
   
-          system_msg += f"The following is information about the resulting pandas DataFrame 'df': \n{df_metadata}"
+          system_msg += (
+              f"\nAquest DataFrame s’anomena `df` i conté les següents columnes i tipus:\n{df_metadata}\n\n"
+              f"Genera codi Python amb Plotly per visualitzar les dades. Els requisits són:\n"
+              f"- Si només hi ha un valor, utilitza un gràfic Indicator.\n"
+              f"- Les etiquetes (títols, eixos, llegendes) han d’estar en català.\n"
+              f"- Els noms de les columnes han d’estar formatats amb espais (substitueix '_' per ' ').\n"
+              f"- Utilitza `color=` només si hi ha una columna categòrica rellevant amb poques categories que aporti valor visual al gràfic (com el nom del producte, el gènere, etc).\n"
+              f"- Si només hi ha una única sèrie (una sola variable dependent sense desglossament en categories), no afegeixis `color=`. Utilitza un sol color uniforme.\n"
+              f"- No utilitzis `color=` si el gràfic mostra una seqüència temporal o contínua (com mesos o dies) sense desglossament per categories.\n"
+              f"- En els gràfics de tipus pastís (pie chart), utilitza `color=` per distingir les categories.\n"
+              f"- Els gràfics han de tenir un estil net, seriós i adequat per informes institucionals.\n"
+  
+  
+  
+          )
+  
+          if chart_type:
+              system_msg += (f"\n- El gràfic ha de ser de tipus: **{chart_type}**."
+              "no en generis cap altre tipus. "
+              "Ignora qualsevol altre format encara que el DataFrame pugui suggerir-ne un diferent.")
+  
+          system_msg += "\n- Torna només codi Python, sense cap explicació."
   
           message_log = [
               self.system_message(system_msg),
               self.user_message(
-                  "Can you generate the Python plotly code to chart the results of the dataframe? Assume the data is in a pandas dataframe called 'df'. If there is only one value in the dataframe, use an Indicator. Respond with only Python code. Do not answer with any explanations -- just the code."
+                  "Assumeix que ja existeix un DataFrame anomenat `df` amb les dades. "
+                  "No creïs un DataFrame nou ni afegeixis dades fictícies. "
+                  "Mostra el codi en Python amb Plotly per visualitzar `df`. "
+                  "Torna només codi Python, sense cap explicació."
               ),
           ]
   
