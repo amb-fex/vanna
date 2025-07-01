@@ -81,9 +81,10 @@ class VannaBase(ABC):
         self.language = self.config.get("language", None)
         self.max_tokens = self.config.get("max_tokens", 14000)
 
-    def load_prompt_from_file(file_path):
-      with open(L:Chatbot\Prompts, 'r', encoding='utf-8') as f:
-          return f.read()
+    def load_prompt_from_file(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+
 
 
     def log(self, message: str, title: str = "Info"):
@@ -579,7 +580,8 @@ class VannaBase(ABC):
         Utilitza el LLM per generar codi Python per visualitzar geodades amb Streamlit i Folium,
         carregant el prompt inicial des d'un arxiu extern.
         """
-        base_prompt = load_prompt_from_file('prompts/inital_prompt_mapas.txt')
+        base_prompt = self.load_prompt_from_file('prompts/inital_prompt_mapas.txt')
+
     
         system_msg = base_prompt
     
@@ -962,7 +964,8 @@ class VannaBase(ABC):
           **kwargs
       ) -> str:
           # Cargar el prompt base desde archivo externo
-          base_prompt = load_prompt_from_file('prompts/initial_prompt_graficas.txt')
+          base_prompt = self.load_prompt_from_file('prompts/initial_prompt_graficas.txt')
+
       
           # Empieza con el contenido del prompt base
           system_msg = base_prompt
