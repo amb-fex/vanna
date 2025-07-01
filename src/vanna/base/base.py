@@ -261,74 +261,87 @@ class VannaBase(ABC):
 
         return False
     
-    def generate_rewritten_question(self, last_question: str, last_sql: str, new_input: str, **kwargs) -> str:
+    def generate_rewritten_question(
+        self, last_question: str, last_sql: str, new_input: str, df: pd.DataFrame, **kwargs
+    ) -> str:
         """
         Reescriu o actualitza una pregunta a partir d’un nou input que pot ser una aclariment, 
-        una correcció o un seguiment, utilitzant tant la pregunta original com la seva SQL per donar context.
-    
+        una correcció o un seguiment, utilitzant la pregunta original, la SQL i una mostra del resultat (DataFrame).
+        
         Args:
-            last_question (str): La pregunta original que va fer l’usuari.
-            last_sql (str): La consulta SQL que es va generar a partir de la pregunta original.
-            new_input (str): El nou input de l’usuari (pot ser una correcció, aclariment o pregunta relacionada).
-            **kwargs: Arguments addicionals opcionals.
-    
+            last_question (str): La pregunta original de l’usuari.
+            last_sql (str): La consulta SQL que es va generar.
+            new_input (str): El nou input de l’usuari (comentari, aclariment, etc.).
+            df (pd.DataFrame): Resultat de la consulta SQL.
+            **kwargs: Arguments opcionals.
+        
         Returns:
-            str: Una nova pregunta o instrucció clara i coherent que reflecteixi la intenció actualitzada de l’usuari.
+            str: Una nova pregunta reformulada que reflecteixi la intenció actualitzada de l’usuari.
         """
         if not last_question and not last_sql:
             return new_input
-  
+
+        # Excloure columnes amb valors massa llargs (com 'geom' o WKB)
+        max_len = 200
+        filtered_df = df[[col for col in df.columns if df[col].astype(str).map(len).max() < max_len]].copy()
+
+        # Previsualitzar només les primeres 5 files i 5 columnes
+        df_preview = (
+            filtered_df.iloc[:5, :5].to_markdown(index=False)
+            if not filtered_df.empty else "No hi ha dades per mostrar."
+        )
+
         prompt = [
             self.system_message(
                 "Ets un assistent de dades que ajuda a l’usuari a interactuar amb una base de dades. "
-                "L’usuari ha fet anteriorment una pregunta que ha generat una consulta SQL. Ara introdueix un nou input, "
-                "que pot ser una aclariment, una correcció o un seguiment de la pregunta o de la consulta SQL anterior. "
-                "Reformula aquest nou input en una nova pregunta o instrucció completa i clara que reflecteixi la seva intenció actual. "
-                "La nova pregunta ha de poder-se convertir en una consulta SQL. Respon només amb la nova pregunta reformulada, sense explicacions."
+                "L’usuari ha fet una pregunta que ha generat una consulta SQL i un resultat. Ara proporciona un nou input "
+                "que pot ser una aclariment o correcció. Reformula aquest input com una nova pregunta clara i completa. "
+                "La nova pregunta ha de poder-se convertir en una nova consulta SQL. Respon només amb la pregunta reformulada, sense explicacions."
             ),
             self.user_message(
                 f"Pregunta anterior: {last_question}\n"
                 f"Consulta SQL anterior:\n{last_sql}\n"
+                f"Resultat (mostra parcial):\n{df_preview}\n"
                 f"Nou input: {new_input}"
             )
+        ]   
+
+        return self.submit_prompt(prompt=prompt, **kwargs)
+
+    def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, new_input: str, df: pd.DataFrame, **kwargs) -> str:
+        """
+        Reescriu o modifica una instrucció per generar una gràfica Plotly, tenint en compte el codi anterior,
+        la pregunta inicial, el nou comentari de l’usuari i el DataFrame de dades utilitzat.
+
+        Args:
+            last_question (str): La pregunta original que va generar el gràfic.
+            last_plotly_code (str): El codi Plotly anterior.
+            new_input (str): Nou comentari de l’usuari (correcció o canvi al gràfic).
+            df (pd.DataFrame): El DataFrame que es va usar per generar la gràfica.
+            **kwargs: Arguments opcionals.
+
+        Returns:
+            str: Una nova instrucció reformulada per generar una gràfica millorada o corregida.
+        """
+        if not last_question and not last_plotly_code:
+            return new_input
+
+        prompt = [
+            self.system_message(
+                "Ets un assistent que ajuda a generar i modificar gràfiques amb Plotly. "
+                "A continuació tens una pregunta de l’usuari, el codi Plotly que es va generar, "
+                "un DataFrame de dades, i un nou comentari de l’usuari. Reformula aquest comentari com una nova instrucció clara i completa "
+                "per generar una gràfica que reflecteixi la seva intenció actual. No afegeixis explicacions."
+            ),
+            self.user_message(
+                f"Pregunta inicial: {last_question}\n"
+                f"Codi Plotly anterior:\n{last_plotly_code}\n"
+                f"DataFrame:\n{df.head(10).to_markdown(index=False)}\n"
+                f"Comentari de l’usuari: {new_input}"
+            )
         ]
-  
-    return self.submit_prompt(prompt=prompt, **kwargs)
 
-def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, new_input: str, df: pd.DataFrame, **kwargs) -> str:
-    """
-    Reescriu o modifica una instrucció per generar una gràfica Plotly, tenint en compte el codi anterior,
-    la pregunta inicial, el nou comentari de l’usuari i el DataFrame de dades utilitzat.
-
-    Args:
-        last_question (str): La pregunta original que va generar el gràfic.
-        last_plotly_code (str): El codi Plotly anterior.
-        new_input (str): Nou comentari de l’usuari (correcció o canvi al gràfic).
-        df (pd.DataFrame): El DataFrame que es va usar per generar la gràfica.
-        **kwargs: Arguments opcionals.
-
-    Returns:
-        str: Una nova instrucció reformulada per generar una gràfica millorada o corregida.
-    """
-    if not last_question and not last_plotly_code:
-        return new_input
-
-    prompt = [
-        self.system_message(
-            "Ets un assistent que ajuda a generar i modificar gràfiques amb Plotly. "
-            "A continuació tens una pregunta de l’usuari, el codi Plotly que es va generar, "
-            "un DataFrame de dades, i un nou comentari de l’usuari. Reformula aquest comentari com una nova instrucció clara i completa "
-            "per generar una gràfica que reflecteixi la seva intenció actual. No afegeixis explicacions."
-        ),
-        self.user_message(
-            f"Pregunta inicial: {last_question}\n"
-            f"Codi Plotly anterior:\n{last_plotly_code}\n"
-            f"DataFrame:\n{df.head(10).to_markdown(index=False)}\n"
-            f"Comentari de l’usuari: {new_input}"
-        )
-    ]
-
-    return self.submit_prompt(prompt=prompt, **kwargs)
+        return self.submit_prompt(prompt=prompt, **kwargs)
 
     def should_generate_map(self, question: str, sql: str, df: pd.DataFrame) -> bool:
         """
@@ -451,127 +464,127 @@ def generate_rewritten_plotly(self, last_question: str, last_plotly_code: str, n
         return self.submit_prompt(prompt=prompt, **kwargs)
     
     
-def generate_followup_questions(
-    self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
-) -> list:
-    """
-    Genera una llista de preguntes de seguiment, assegurant que siguin 5, úniques i realment preguntes.
-
-    Args:
-        question (str): Pregunta original.
-        sql (str): Consulta SQL generada.
-        df (pd.DataFrame): Resultats de la consulta.
-        n_questions (int): Número de preguntes de seguiment desitjades.
-
-    Returns:
-        list: Llista amb 5 preguntes úniques i vàlides.
-    """
-    message_log = [
-        self.system_message(
-            f"Ets un assistent de dades. L’usuari ha preguntat: '{question}'\n\n"
-            f"La consulta SQL generada és:\n{sql}\n\n"
-            f"El següent és un DataFrame amb els resultats:\n{df.head(25).to_markdown(index=False)}\n\n"
-        ),
-        self.user_message(
-            f"Genera una llista de {n_questions} preguntes de seguiment relacionades amb aquesta consulta i resultats. "
-            f"Cada línia ha de ser una pregunta clara, amb resposta possible via SQL. Evita instruccions, codi o frases que no siguin preguntes."
-        )
-    ]
-
-    llm_response = self.submit_prompt(message_log, **kwargs)
-
-    # Dividir en línies
-    lines = llm_response.strip().split("\n")
-
-    # Netejar numeració i espais
-    cleaned = [re.sub(r"^\d+\.\s*", "", line).strip() for line in lines]
-
-    # Filtrar només preguntes (acaben amb '?')
-    questions_only = [q for q in cleaned if q.endswith("?")]
-
-    # Eliminar duplicats mantenint ordre
-    seen = set()
-    unique_questions = []
-    for q in questions_only:
-        if q not in seen:
-            unique_questions.append(q)
-            seen.add(q)
-
-    # Retornar exactament n preguntes
-    return unique_questions[:n_questions]
-
-def generate_questions(self, **kwargs) -> List[str]:
-      """
-      **Exemple:**
-      ```python
-      vn.generate_questions()
-      ```
-  
-      Genera una llista de preguntes que pots fer al teu assistent Vanna.
-      Es limita a un màxim de 5 preguntes.
-      """
-      preguntes_sql = self.get_similar_question_sql(question="", **kwargs)
-  
-      return [q["question"] for q in preguntes_sql[:5]]
-
-def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
+    def generate_followup_questions(
+        self, question: str, sql: str, df: pd.DataFrame, n_questions: int = 5, **kwargs
+    ) -> list:
         """
-        **Example:**
-        ```python
-        vn.generate_summary("What are the top 10 customers by sales?", df)
-        ```
-
-        Generate a summary of the results of a SQL query.
-
+        Genera una llista de preguntes de seguiment, assegurant que siguin 5, úniques i realment preguntes.
+    
         Args:
-            question (str): The question that was asked.
-            df (pd.DataFrame): The results of the SQL query.
-
+            question (str): Pregunta original.
+            sql (str): Consulta SQL generada.
+            df (pd.DataFrame): Resultats de la consulta.
+            n_questions (int): Número de preguntes de seguiment desitjades.
+    
         Returns:
-            str: The summary of the results of the SQL query.
+            list: Llista amb 5 preguntes úniques i vàlides.
         """
-
         message_log = [
             self.system_message(
-                f"You are a helpful data assistant. The user asked the question: '{question}'\n\nThe following is a pandas DataFrame with the results of the query: \n{df.to_markdown()}\n\n"
+                f"Ets un assistent de dades. L’usuari ha preguntat: '{question}'\n\n"
+                f"La consulta SQL generada és:\n{sql}\n\n"
+                f"El següent és un DataFrame amb els resultats:\n{df.head(25).to_markdown(index=False)}\n\n"
             ),
             self.user_message(
-                "Briefly summarize the data based on the question that was asked. Do not respond with any additional explanation beyond the summary." +
-                self._response_language()
-            ),
+                f"Genera una llista de {n_questions} preguntes de seguiment relacionades amb aquesta consulta i resultats. "
+                f"Cada línia ha de ser una pregunta clara, amb resposta possible via SQL. Evita instruccions, codi o frases que no siguin preguntes."
+            )
         ]
-
-        summary = self.submit_prompt(message_log, **kwargs)
-
-        return summary
-
-
-def generate_map_code(self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs) -> str:
-    """
-    Utilitza el LLM per generar codi Python per visualitzar geodades amb Streamlit i Folium,
-    carregant el prompt inicial des d'un arxiu extern.
-    """
-    base_prompt = load_prompt_from_file('prompts/inital_prompt_mapas.txt')
-
-    system_msg = base_prompt
-
-    # Insertar dinámicamente la pregunta y la SQL dentro del prompt cargado
-    if question is not None:
-        system_msg = system_msg.replace("{question}", question)
-    if sql is not None:
-        system_msg = system_msg.replace("{sql}", sql)
-    if df_metadata is not None:
-        system_msg = system_msg.replace("{df_metadata}", df_metadata)    
-
-    message_log = [
-        self.system_message(system_msg),
-        self.user_message(
-            "Genera només codi Python per visualitzar el DataFrame `df` com a mapa interactiu amb Streamlit i Folium."
-        )
-    ]
-
-    plot_code = self.submit_prompt(message_log, **kwargs)
-    return self._sanitize_plotly_code(self._extract_python_code(plot_code))
+    
+        llm_response = self.submit_prompt(message_log, **kwargs)
+    
+        # Dividir en línies
+        lines = llm_response.strip().split("\n")
+    
+        # Netejar numeració i espais
+        cleaned = [re.sub(r"^\d+\.\s*", "", line).strip() for line in lines]
+    
+        # Filtrar només preguntes (acaben amb '?')
+        questions_only = [q for q in cleaned if q.endswith("?")]
+    
+        # Eliminar duplicats mantenint ordre
+        seen = set()
+        unique_questions = []
+        for q in questions_only:
+            if q not in seen:
+                unique_questions.append(q)
+                seen.add(q)
+    
+        # Retornar exactament n preguntes
+        return unique_questions[:n_questions]
+    
+    def generate_questions(self, **kwargs) -> List[str]:
+          """
+          **Exemple:**
+          ```python
+          vn.generate_questions()
+          ```
+      
+          Genera una llista de preguntes que pots fer al teu assistent Vanna.
+          Es limita a un màxim de 5 preguntes.
+          """
+          preguntes_sql = self.get_similar_question_sql(question="", **kwargs)
+      
+          return [q["question"] for q in preguntes_sql[:5]]
+    
+    def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
+            """
+            **Example:**
+            ```python
+            vn.generate_summary("What are the top 10 customers by sales?", df)
+            ```
+    
+            Generate a summary of the results of a SQL query.
+    
+            Args:
+                question (str): The question that was asked.
+                df (pd.DataFrame): The results of the SQL query.
+    
+            Returns:
+                str: The summary of the results of the SQL query.
+            """
+    
+            message_log = [
+                self.system_message(
+                    f"You are a helpful data assistant. The user asked the question: '{question}'\n\nThe following is a pandas DataFrame with the results of the query: \n{df.to_markdown()}\n\n"
+                ),
+                self.user_message(
+                    "Briefly summarize the data based on the question that was asked. Do not respond with any additional explanation beyond the summary." +
+                    self._response_language()
+                ),
+            ]
+    
+            summary = self.submit_prompt(message_log, **kwargs)
+    
+            return summary
+    
+    
+    def generate_map_code(self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs) -> str:
+        """
+        Utilitza el LLM per generar codi Python per visualitzar geodades amb Streamlit i Folium,
+        carregant el prompt inicial des d'un arxiu extern.
+        """
+        base_prompt = load_prompt_from_file('prompts/inital_prompt_mapas.txt')
+    
+        system_msg = base_prompt
+    
+        # Insertar dinámicamente la pregunta y la SQL dentro del prompt cargado
+        if question is not None:
+            system_msg = system_msg.replace("{question}", question)
+        if sql is not None:
+            system_msg = system_msg.replace("{sql}", sql)
+        if df_metadata is not None:
+            system_msg = system_msg.replace("{df_metadata}", df_metadata)    
+    
+        message_log = [
+            self.system_message(system_msg),
+            self.user_message(
+                "Genera només codi Python per visualitzar el DataFrame `df` com a mapa interactiu amb Streamlit i Folium."
+            )
+        ]
+    
+        plot_code = self.submit_prompt(message_log, **kwargs)
+        return self._sanitize_plotly_code(self._extract_python_code(plot_code))
 
     # ----------------- Use Any Embeddings API ----------------- #
       @abstractmethod
