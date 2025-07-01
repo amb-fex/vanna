@@ -188,20 +188,4 @@ class VannaDefault(VannaDB_VectorStore):
   
       return results.data
     
-    def generate_sql(self, question: str, **kwargs) -> str:
-        # Usa la función base de Vanna
-        sql = super().generate_sql(question, **kwargs)
-
-        # Limpiezas comunes
-        sql = sql.replace("\\_", "_")
-        sql = sql.replace("\\", "")
-
-        # Corrección de errores comunes como 'any' mal usado
-        sql = self.corregir_sql_any(sql)
-
-      
-
-        self.log(sql)
-
-        return sql
-    
+   
