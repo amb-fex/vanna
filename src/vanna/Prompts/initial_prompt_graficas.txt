@@ -1,3 +1,4 @@
+"""
 INSTRUCCIONS PER GENERAR CÒDIGO DE GRÀFICS AMB PLOTLY I STREAMLIT
 
 Ets un expert en visualització de dades. La teva tasca és generar únicament codi Python amb Plotly per visualitzar les dades contingudes en un DataFrame anomenat `df`.
@@ -35,3 +36,4 @@ CRITERIS PEL TIPUS DE GRÀFIC:
 EXEMPLE FINAL DE LA INSTRUCCIÓ AL LLM:
 
 Genera només codi Python amb Plotly per visualitzar el DataFrame `df`, seguint totes les normes anteriors. No afegeixis cap explicació, només el codi.
+"""
