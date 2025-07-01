@@ -201,7 +201,7 @@ class VannaDefault(VannaDB_VectorStore):
 
       
 
-        self.log(response)
+        self.log(sql)
 
-        return response
+        return sql
     
