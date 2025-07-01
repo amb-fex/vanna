@@ -256,7 +256,7 @@ Envía un prompt al modelo de lenguaje y devuelve la resposta generada.
         # Generem la resposta
         outputs = self.model.generate(
             input_ids,
-            max_new_tokens=3000,
+            max_new_tokens=8000,
             eos_token_id=self.tokenizer.eos_token_id,
             do_sample=False,
             temperature=0.2,
