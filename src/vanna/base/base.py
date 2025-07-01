@@ -528,35 +528,50 @@ class VannaBase(ABC):
           return [q["question"] for q in preguntes_sql[:5]]
     
     def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
-            """
-            **Example:**
-            ```python
-            vn.generate_summary("What are the top 10 customers by sales?", df)
-            ```
-    
-            Generate a summary of the results of a SQL query.
-    
-            Args:
-                question (str): The question that was asked.
-                df (pd.DataFrame): The results of the SQL query.
-    
-            Returns:
-                str: The summary of the results of the SQL query.
-            """
-    
-            message_log = [
-                self.system_message(
-                    f"You are a helpful data assistant. The user asked the question: '{question}'\n\nThe following is a pandas DataFrame with the results of the query: \n{df.to_markdown()}\n\n"
-                ),
-                self.user_message(
-                    "Briefly summarize the data based on the question that was asked. Do not respond with any additional explanation beyond the summary." +
-                    self._response_language()
-                ),
-            ]
-    
-            summary = self.submit_prompt(message_log, **kwargs)
-    
-            return summary
+        """
+        **Example:**
+        ```python
+        vn.generate_summary("What are the top 10 customers by sales?", df)
+        ```
+
+        Generate a summary of the results of a SQL query.
+
+        Args:
+            question (str): The question that was asked.
+            df (pd.DataFrame): The results of the SQL query.
+
+        Returns:
+            str: The summary of the results of the SQL query.
+        """
+        """         # Excluir columnas problemáticas explícitas
+            exclude_columns = {"geom", "geometry", "lat", "lon", "wkb", "x", "y"}
+            max_len = 200
+
+            filtered_df = df[
+                [col for col in df.columns
+                if col.lower() not in exclude_columns
+                and df[col].astype(str).map(len).max() < max_len]
+            ].copy()
+    """
+        df_preview = (
+            df.head(1).to_markdown(index=False)
+            if not df.empty else "No hi ha dades per mostrar."
+        )
+        
+        message_log = [
+            self.system_message(
+                f"You are a helpful data assistant. The user asked the question: '{question}'\n\nThe following is a pandas DataFrame with the results of the query: \n{df_preview}\n\n"
+            ),
+            self.user_message(
+                "Briefly summarize the data based on the question that was asked. Do not respond with any additional explanation beyond the summary." +
+                self._response_language()
+            ),
+        ]
+
+        summary = self.submit_prompt(message_log, **kwargs)
+
+        return summary
+
     
     
     def generate_map_code(self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs) -> str:
@@ -938,52 +953,52 @@ class VannaBase(ABC):
   
           return plotly_code
   
-    def generate_plotly_code(
-        self,
-        question: str = None,
-        sql: str = None,
-        df_metadata: str = None,
-        chart_type: str = None,
-        **kwargs
-    ) -> str:
-        # Cargar el prompt base desde archivo externo
-        base_prompt = load_prompt_from_file('prompts/initial_prompt_graficas.txt')
-    
-        # Empieza con el contenido del prompt base
-        system_msg = base_prompt
-    
-        # Opcional: puedes inyectar la pregunta, la SQL o el df_metadata si quieres
-        if question:
-            system_msg += f"\n\n=== Pregunta original de l'usuari ===\n{question}"
-    
-        if sql:
-            system_msg += f"\n\n=== Consulta SQL que ha generat el DataFrame ===\n{sql}"
-    
-        if df_metadata:
-            system_msg += f"\n\n=== Estructura del DataFrame (`df_metadata`) ===\n{df_metadata}"
-    
-        # Si el usuario ha forzado un tipo de gráfico
-        if chart_type:
-            system_msg += (
-                f"\n\n⚠️ El gràfic ha de ser de tipus: **{chart_type}**. "
-                "No generis cap altre tipus encara que el DataFrame suggereixi una altra opció."
-            )
-    
-        # Construir el message_log para enviar al LLM
-        message_log = [
-            self.system_message(system_msg),
-            self.user_message(
-                "Assumeix que ja existeix un DataFrame anomenat `df` amb les dades. "
-                "No creïs un DataFrame nou ni afegeixis dades fictícies. "
-                "Mostra només el codi Python amb Plotly per visualitzar `df`, sense cap explicació addicional."
-            ),
-        ]
-    
-        # Llamar al LLM
-        plotly_code = self.submit_prompt(message_log, **kwargs)
-    
-        # Limpiar el código si hace falta
-        return self._sanitize_plotly_code(self._extract_python_code(plotly_code))
+      def generate_plotly_code(
+          self,
+          question: str = None,
+          sql: str = None,
+          df_metadata: str = None,
+          chart_type: str = None,
+          **kwargs
+      ) -> str:
+          # Cargar el prompt base desde archivo externo
+          base_prompt = load_prompt_from_file('prompts/initial_prompt_graficas.txt')
+      
+          # Empieza con el contenido del prompt base
+          system_msg = base_prompt
+      
+          # Opcional: puedes inyectar la pregunta, la SQL o el df_metadata si quieres
+          if question:
+              system_msg += f"\n\n=== Pregunta original de l'usuari ===\n{question}"
+      
+          if sql:
+              system_msg += f"\n\n=== Consulta SQL que ha generat el DataFrame ===\n{sql}"
+      
+          if df_metadata:
+              system_msg += f"\n\n=== Estructura del DataFrame (`df_metadata`) ===\n{df_metadata}"
+      
+          # Si el usuario ha forzado un tipo de gráfico
+          if chart_type:
+              system_msg += (
+                  f"\n\n⚠️ El gràfic ha de ser de tipus: **{chart_type}**. "
+                  "No generis cap altre tipus encara que el DataFrame suggereixi una altra opció."
+              )
+      
+          # Construir el message_log para enviar al LLM
+          message_log = [
+              self.system_message(system_msg),
+              self.user_message(
+                  "Assumeix que ja existeix un DataFrame anomenat `df` amb les dades. "
+                  "No creïs un DataFrame nou ni afegeixis dades fictícies. "
+                  "Mostra només el codi Python amb Plotly per visualitzar `df`, sense cap explicació addicional."
+              ),
+          ]
+      
+          # Llamar al LLM
+          plotly_code = self.submit_prompt(message_log, **kwargs)
+      
+          # Limpiar el código si hace falta
+          return self._sanitize_plotly_code(self._extract_python_code(plotly_code))
 
   
       # ----------------- Connect to Any Database to run the Generated SQL ----------------- #
