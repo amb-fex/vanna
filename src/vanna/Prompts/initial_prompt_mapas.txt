@@ -1,3 +1,4 @@
+"""
 INSTRUCCIONS PER GENERAR CÒDIGO DE MAPA AMB STREAMLIT I FOLIUM
 
 Ets un expert en visualització de dades geoespacials. La teva tasca és generar codi Python que visualitzi el contingut del DataFrame `df` com a mapa interactiu utilitzant Streamlit i Folium.
@@ -108,4 +109,4 @@ def get_color(value):
 
 INSTRUCCIÓ FINAL AL LLM:
 Genera únicament codi Python per visualitzar `df` com a mapa interactiu amb Streamlit i Folium, seguint les normes i exemples anteriors.
-
+"""
