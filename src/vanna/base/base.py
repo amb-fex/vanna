@@ -81,6 +81,11 @@ class VannaBase(ABC):
         self.language = self.config.get("language", None)
         self.max_tokens = self.config.get("max_tokens", 14000)
 
+    def load_prompt_from_file(file_path):
+      with open(L:Chatbot\Prompts, 'r', encoding='utf-8') as f:
+          return f.read()
+
+
     def log(self, message: str, title: str = "Info"):
         print(f"{title}: {message}")
 
@@ -539,415 +544,34 @@ def generate_summary(self, question: str, df: pd.DataFrame, **kwargs) -> str:
         summary = self.submit_prompt(message_log, **kwargs)
 
         return summary
+
+
 def generate_map_code(self, question: str = None, sql: str = None, df_metadata: str = None, **kwargs) -> str:
-        """
-        Utilitza el LLM per generar codi Python per visualitzar geodades a partir del DataFrame `df` amb Streamlit i Folium,
-        seguint patrons específics per a diferents tipus de geometries i consultes geoespacials.
-        """
-
-        if question is not None:
-            system_msg = (
-                f"Tens un DataFrame anomenat `df` que conté els resultats de la consulta SQL relacionada amb la pregunta: '{question}'."
-            )
-        else:
-            system_msg = "Tens un DataFrame anomenat `df` amb resultats geoespacials."
-
-        if sql is not None:
-            system_msg += f"\n\nEl DataFrame s’ha generat a partir de la següent consulta SQL:\n{sql}\n"
-
-        system_msg += (
-            "Utilitza els següents imports recomanats per generar el codi (no cal repetir-los si ja existeixen):\n"
-            "```python\n"
-            "import streamlit as st\n"
-            "import geopandas as gpd\n"
-            "import folium\n"
-            "from streamlit_folium import st_folium\n"
-            "import matplotlib.cm as cm\n"
-            "import matplotlib.colors as colors\n"
-            "from shapely import wkb\n"
-            "import shapely.wkb\n"
-            "from folium.plugins import HeatMap\n"
-            "import numpy as np\n"
-            "```\n"
-            "❗ No facis `from shapely.wkb import loads`. Utilitza sempre `shapely.wkb.loads(...)`.\n"
-            "❗ No generis DataFrames simulats. Assumeix que `df` ja està carregat amb dades reals.\n"
-            "⚠️ Si la geometria és de tipus `Polygon` o `MultiPolygon`, genera sempre un mapa amb `folium.GeoJson(...)` per representar les àrees completes, i aplica `style_function` i `GeoJsonTooltip` segons correspongui.\n"
-            "⚠️ Només si la geometria és de tipus `Point`, pots utilitzar `folium.CircleMarker(...)` amb `.x` i `.y`.\n"
-            "⚠️ Si l'usuari sol·licita mapes coroplètics per municipis (camp 'nommuni'), aplica una escala de colors logarítmica sobre la variable d'interès per evitar que un sol municipi amb valors molt elevats domini la visualització. Utilitza np.log1p(valor) per evitar problemes amb valors zero, i un colormap com 'YlOrRd' o 'Oranges'.\n"
-            "⚠️ Abans de construir qualsevol `GeoJsonTooltip`, comprova si els camps existeixen realment al DataFrame `df`.\n"
-            "Si el camp, per exemple `nommuni`, no es troba entre les columnes disponibles de `df`, **no l'utilitzis** en `tooltip`, `style_function`, ni cap part del codi.\n"
-            "Només utilitza camps reals que existeixen explícitament al DataFrame."
-
-"""
-            === EXEMPLES ENTRENATS ===
-            A continuació es mostren preguntes típiques i el codi Python que hauria de generar-se per visualitzar-les correctament.
-            === Exemple 1 ===
-            **Pregunta**: Has un mapa de descàrregues de Lidar 2012-2013 segons perfil d'usuaris.
-
-            **Codi complet esperat**:
-            # Convertir WKB a geometria shapely
-            df["geometry"] = df["geom"].apply(lambda x: wkb.loads(bytes.fromhex(x), hex=True) if isinstance(x, str) else None)
-            df = df[df["geometry"].notnull()].copy()
-
-            # Convertir a GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
-
-            # Colormap global
-            min_val = df["total_descargas"].min()
-            max_val = df["total_descargas"].max()
-            colormap = cm.get_cmap("YlGnBu")
-            norm = colors.Normalize(vmin=min_val, vmax=max_val)
-
-            def get_color(value):
-                rgba = colormap(norm(value))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=9)
-
-            # Agrupar per perfil i crear una capa per cada grup
-            for perfil, group in gdf.groupby("nomperfil"):
-                # Conversió a GeoJSON
-                gj = folium.GeoJson(
-                    data=group.__geo_interface__,
-                    name=f"Perfil: {perfil}",
-                    style_function=lambda feature: {
-                        "fillColor": get_color(feature["properties"]["total_descargas"]),
-                        "color": "black",
-                        "weight": 0.7,
-                        "fillOpacity": 0.7
-                    },
-                    tooltip=folium.GeoJsonTooltip(fields=["nomperfil", "idfull", "total_descargas"])
-                )
-                gj.add_to(m)
-
-            # Control de capes
-            LayerControl(collapsed=False).add_to(m)
-
-            # Mostrar a Streamlit
-            st_folium(m, width=800, height=600)
-
-            === Exemple 2===
-            **Pregunta**: Fes un mapa que mostri les descàrregues del producte MTM 1000 l'any 2023, segons els cinc àmbits professionals que en van fer menys
-
-            **Codi complet esperat**:
-
-            # Convertir WKB a geometria shapely
-            df["geometry"] = df["geom"].apply(lambda x: wkb.loads(bytes.fromhex(x), hex=True) if isinstance(x, str) else None)
-            df = df[df["geometry"].notnull()].copy()
-
-            # Crear GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
-
-            # Colormap
-            min_val = df["total_descargas"].min()
-            max_val = df["total_descargas"].max()
-            colormap = cm.get_cmap("YlOrRd")
-            norm = colors.Normalize(vmin=min_val, vmax=max_val)
-
-            def get_color(value):
-                rgba = colormap(norm(value))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=9)
-
-            # Agrupar per àmbit i crear una capa per grup
-            for ambito, group in gdf.groupby("nomambito"):
-                gj = folium.GeoJson(
-                    data=group.__geo_interface__,
-                    name=f"Àmbit: {ambito}",
-                    style_function=lambda feature: {
-                        "fillColor": get_color(feature["properties"]["total_descargas"]),
-                        "color": "black",
-                        "weight": 0.5,
-                        "fillOpacity": 0.7
-                    },
-                    tooltip=folium.GeoJsonTooltip(fields=["nomambito", "idfull", "total_descargas"])
-                )
-                gj.add_to(m)
-
-            # Control de capes
-            LayerControl(collapsed=False).add_to(m)
-
-            # Mostrar mapa en Streamlit
-            st_folium(m, width=800, height=600)
-
-            === Exemple 3===
-            **Pregunta**: Has un mapa de descàrregues de orto 2020 per districtes de barcelona
-
-            **Codi complet esperat**:
-            # Convertir WKB a geometria shapely
-            df["geometry"] = df["geom"].apply(lambda x: wkb.loads(bytes.fromhex(x), hex=True) if isinstance(x, str) else None)
-            df = df[df["geometry"].notnull()].copy()
-
-            # Crear GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
-
-            # Colormap automàtic
-            min_val = df["total_descargas"].min()
-            max_val = df["total_descargas"].max()
-
-            colormap = cm.get_cmap("YlOrRd")
-            norm = colors.Normalize(vmin=min_val, vmax=max_val)
-
-            def get_color(value):
-                rgba = colormap(norm(value))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=11)
-
-            # Capa única amb tots els districtes
-            geojson = folium.GeoJson(
-                data=gdf.__geo_interface__,
-                style_function=lambda feature: {
-                    "fillColor": get_color(feature["properties"]["total_descargas"]),
-                    "color": "black",
-                    "weight": 1,
-                    "fillOpacity": 0.7
-                },
-                tooltip=folium.GeoJsonTooltip(fields=["nom", "total_descargas"], aliases=["Districte", "Descàrregues Orto 2020"])
-            )
-            geojson.add_to(m)
-
-            # Mostrar a Streamlit
-            st_folium(m, width=800, height=600)
-
-            === Exemple 4===
-            **Pregunta**: has un mapa coroplètic de clics per municipis, excloent barcelona
-
-            **Codi complet esperat**:
-            # Convertir geometries WKB a shapely
-            df["geometry"] = df["geom"].apply(lambda x: wkb.loads(bytes.fromhex(x), hex=True) if isinstance(x, str) else None)
-            df = df[df["geometry"].notnull()].copy()
-
-            # Crear GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry="geometry", crs="EPSG:4326")
-
-            # Configurar colormap automàtic
-            min_val = df["total_clicks"].min()
-            max_val = df["total_clicks"].max()
-
-            colormap = cm.get_cmap("OrRd")  # També pots provar "YlOrRd", "Reds", etc.
-            norm = colors.Normalize(vmin=min_val, vmax=max_val)
-
-            def get_color(value):
-                rgba = colormap(norm(value))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base centrat a l’AMB
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=9)
-
-            # Capa única amb tots els municipis
-            geojson = folium.GeoJson(
-                data=gdf.__geo_interface__,
-                style_function=lambda feature: {
-                    "fillColor": get_color(feature["properties"]["total_clicks"]),
-                    "color": "black",
-                    "weight": 0.7,
-                    "fillOpacity": 0.75
-                },
-                tooltip=folium.GeoJsonTooltip(fields=["nommuni", "total_clicks"], aliases=["Municipi", "Clics 2024"])
-            )
-            geojson.add_to(m)
-
-            # Mostrar el mapa a Streamlit
-            st_folium(m, width=800, height=600)
-
-            === Exemple 5===
-            **Pregunta**: has un mapa coroplètic de clics per municipis, excloent barcelona
-
-            **Codi complet esperat**:
-
-            
-            # Convertir geometries WKB a shapely
-            df['geometry'] = df['geom'].apply(
-                lambda x: wkb.loads(bytes.fromhex(x)) if isinstance(x, str) else None
-            )
-            df = df[df['geometry'].notnull()].copy()
-
-            # === Convertir a GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry='geometry', crs='EPSG:4326')
-
-            # === Calcular escala logarítmica de les descàrregues
-            gdf['log_descargas'] = gdf['total_descargas'].apply(lambda x: np.log1p(x))  # log(1 + x)
-
-            # === Configurar colormap logarítmic
-            vmin = gdf['log_descargas'].min()
-            vmax = gdf['log_descargas'].max()
-            colormap = cm.get_cmap("YlOrRd")
-            norm = colors.Normalize(vmin=vmin, vmax=vmax)
-
-            def get_color(value):
-                rgba = colormap(norm(np.log1p(value)))
-                return colors.to_hex(rgba)
-
-            # === Crear mapa base centrat a Barcelona
-            m = folium.Map(location=[41.3851, 2.1734], zoom_start=11)
-
-            # === Afegir punts amb color logarítmic
-            for _, row in gdf.iterrows():
-                folium.CircleMarker(
-                    location=[row.geometry.y, row.geometry.x],
-                    radius=6,
-                    color=get_color(row['total_descargas']),
-                    fill=True,
-                    fill_opacity=0.6,
-                    popup=f"Àmbit: {row['nomambito']}<br>Descàrregues: {row['total_descargas']}"
-                ).add_to(m)
-
-            # === Mostrar mapa a Streamlit
-            st_folium(m, width=800, height=600)
-
-            === Exemple 6=== has mapa de Clics realitzats per usuaris de l'àmbit Cartografia i geomàtica 
-            el usuario pide representar clicks pero NO pide que sea coroplètic por mommuni o districte por cuanto la geometria del df ES UN PUNTO y NO un mutipolygon. 
-
-            **Codi complet esperat**:
-
-            df['geometry'] = df['geom'].apply(
-            lambda x: wkb.loads(bytes.fromhex(x)) if isinstance(x, str) else None
-            )
-            df = df[df['geometry'].notnull()].copy()
-
-            from streamlit_folium import folium_static
-            # ===  Convertir a GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry='geometry', crs='EPSG:4326')
-
-            # ===  Crear mapa base centrado en Barcelona
-            m = folium.Map(location=[41.3851, 2.1734], zoom_start=11)
-
-            # ===  Añadir puntos con estilo
-            for _, row in gdf.iterrows():
-                folium.CircleMarker(
-                    location=[row.geometry.y, row.geometry.x],
-                    radius=4,
-                    color='green',
-                    fill=True,
-                    fill_opacity=0.6,
-                    popup=f"Àmbit: {row['nomambito']}"
-                ).add_to(m)
-
-            # Mostrar mapa en Streamlit
-            folium_static(m)
-
-
-
-             === Exemple 7 ===
-            **Pregunta**: Fes un mapa coroplètic que mostri els municipis amb més descàrregues de Orto 2020
-
-
-            # Escala logarítmica per les descàrregues
-            gdf['log_descargas'] = gdf['total_descargas'].apply(lambda x: np.log1p(x))  # log(1 + x)
-
-            vmin = gdf['log_descargas'].min()
-            vmax = gdf['log_descargas'].max()
-
-            colormap = cm.get_cmap("YlOrRd")
-            norm = colors.Normalize(vmin=vmin, vmax=vmax)
-
-            def get_color(value):
-                rgba = colormap(norm(np.log1p(value)))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base centrat a l’AMB
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=9)
-
-            # Capa única amb tots els municipis
-            geojson = folium.GeoJson(
-                data=gdf.__geo_interface__,
-                style_function=lambda feature: {
-                    "fillColor": get_color(feature["properties"]["total_descargas"]),
-                    "color": "black",
-                    "weight": 0.7,
-                    "fillOpacity": 0.7
-                },
-                tooltip=folium.GeoJsonTooltip(fields=["nommuni", "total_descargas"], aliases=["Municipi", "Descàrregues Orto 2020"])
-            )
-            geojson.add_to(m)
-
-            # Mostrar el mapa a Streamlit
-            st_folium(m, width=800, height=600)
-
-                         === Exemple 8 ===
-            **Pregunta**: Fes un mapa comparatiu de les descàrregues del MTM1000 per districte entre 2022 i 2023
-
-            **Codi complet esperat**:
-            # Conversió de WKB a geometries shapely
-            df['geometry'] = df['geom'].apply(lambda x: wkb.loads(bytes.fromhex(x)) if isinstance(x, str) else None)
-            df = df[df['geometry'].notnull()].copy()
-
-            # Crear GeoDataFrame
-            gdf = gpd.GeoDataFrame(df, geometry='geometry', crs='EPSG:4326')
-
-            # Selecció d'any per visualitzar
-            any = st.selectbox("Selecciona l'any", options=[2022, 2023], index=0)
-            columna_desc = f"total_descargas_{any}"
-
-            # Colormap automàtic
-            min_val = gdf[columna_desc].min()
-            max_val = gdf[columna_desc].max()
-            colormap = cm.get_cmap("YlOrRd")
-            norm = colors.Normalize(vmin=min_val, vmax=max_val)
-
-            def get_color(value):
-                rgba = colormap(norm(value))
-                return colors.to_hex(rgba)
-
-            # Crear mapa base centrat a Barcelona
-            m = folium.Map(location=[41.3874, 2.1686], zoom_start=11, control_scale=True)
-
-            # Capa de districtes amb color segons descàrregues
-            folium.GeoJson(
-                data=gdf.__geo_interface__,
-                style_function=lambda feature: {
-                    "fillColor": get_color(feature["properties"][columna_desc]),
-                    "color": "gray",
-                    "weight": 1,
-                    "fillOpacity": 0.7,
-                },
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["nom", columna_desc],
-                    aliases=["Districte", f"Descàrregues {any}"],
-                    localize=True
-                ),
-                name=f"Descàrregues {any}"
-            ).add_to(m)
-
-            # Llegenda bàsica
-            from branca.colormap import linear
-            legend = linear.YlOrRd_09.scale(min_val, max_val)
-            legend.caption = f"Descàrregues del MTM 1000 ({any})"
-            legend.add_to(m)
-
-            # Mostrar mapa a Streamlit
-            st_folium(m, width=800, height=600)
-
-
-                         === Exemple 9 ===
-            **Pregunta**: Has un mapa de descàrregues de Lidar 2012-2013 segons perfil d'usuaris.
-
-            **Codi complet esperat**:
-            # Convertir WKB a geometria shapely
-            
-            # Mostrar a Streamlit
-            st_folium(m, width=800, height=600)
-
-"""
+    """
+    Utilitza el LLM per generar codi Python per visualitzar geodades amb Streamlit i Folium,
+    carregant el prompt inicial des d'un arxiu extern.
+    """
+    base_prompt = load_prompt_from_file('prompts/inital_prompt_mapas.txt')
+
+    system_msg = base_prompt
+
+    # Insertar dinámicamente la pregunta y la SQL dentro del prompt cargado
+    if question is not None:
+        system_msg = system_msg.replace("{question}", question)
+    if sql is not None:
+        system_msg = system_msg.replace("{sql}", sql)
+    if df_metadata is not None:
+        system_msg = system_msg.replace("{df_metadata}", df_metadata)    
+
+    message_log = [
+        self.system_message(system_msg),
+        self.user_message(
+            "Genera només codi Python per visualitzar el DataFrame `df` com a mapa interactiu amb Streamlit i Folium."
         )
-        message_log = [
-            self.system_message(system_msg),
-            self.user_message(
-                "Genera només codi Python per visualitzar el DataFrame `df` com a mapa interactiu amb Streamlit i Folium."
-            )
-        ]
+    ]
 
-        #plot_code = self.submit_prompt(message_log, kwargs=kwargs)
-        plot_code = self.submit_prompt(message_log, **kwargs)
-
-        return self._sanitize_plotly_code(self._extract_python_code(plot_code))
-
-
+    plot_code = self.submit_prompt(message_log, **kwargs)
+    return self._sanitize_plotly_code(self._extract_python_code(plot_code))
 
     # ----------------- Use Any Embeddings API ----------------- #
       @abstractmethod
@@ -1301,53 +925,53 @@ def generate_map_code(self, question: str = None, sql: str = None, df_metadata: 
   
           return plotly_code
   
-      def generate_plotly_code(
-          self, question: str = None, sql: str = None, df_metadata: str = None, chart_type: str = None, **kwargs
-      ) -> str:
-          if question is not None:
-              system_msg = f"Tens un DataFrame de pandas que conté els resultats de la consulta SQL relacionada amb la pregunta: '{question}'"
-          else:
-              system_msg = "Tens un DataFrame de pandas amb resultats analítics."
-  
-          if sql is not None:
-              system_msg += f"\n\nEl DataFrame s’ha generat a partir de la següent consulta SQL:\n{sql}\n"
-  
-          system_msg += (
-              f"\nAquest DataFrame s’anomena `df` i conté les següents columnes i tipus:\n{df_metadata}\n\n"
-              f"Genera codi Python amb Plotly per visualitzar les dades. Els requisits són:\n"
-              f"- Si només hi ha un valor, utilitza un gràfic Indicator.\n"
-              f"- Les etiquetes (títols, eixos, llegendes) han d’estar en català.\n"
-              f"- Els noms de les columnes han d’estar formatats amb espais (substitueix '_' per ' ').\n"
-              f"- Utilitza `color=` només si hi ha una columna categòrica rellevant amb poques categories que aporti valor visual al gràfic (com el nom del producte, el gènere, etc).\n"
-              f"- Si només hi ha una única sèrie (una sola variable dependent sense desglossament en categories), no afegeixis `color=`. Utilitza un sol color uniforme.\n"
-              f"- No utilitzis `color=` si el gràfic mostra una seqüència temporal o contínua (com mesos o dies) sense desglossament per categories.\n"
-              f"- En els gràfics de tipus pastís (pie chart), utilitza `color=` per distingir les categories.\n"
-              f"- Els gràfics han de tenir un estil net, seriós i adequat per informes institucionals.\n"
-  
-  
-  
-          )
-  
-          if chart_type:
-              system_msg += (f"\n- El gràfic ha de ser de tipus: **{chart_type}**."
-              "no en generis cap altre tipus. "
-              "Ignora qualsevol altre format encara que el DataFrame pugui suggerir-ne un diferent.")
-  
-          system_msg += "\n- Torna només codi Python, sense cap explicació."
-  
-          message_log = [
-              self.system_message(system_msg),
-              self.user_message(
-                  "Assumeix que ja existeix un DataFrame anomenat `df` amb les dades. "
-                  "No creïs un DataFrame nou ni afegeixis dades fictícies. "
-                  "Mostra el codi en Python amb Plotly per visualitzar `df`. "
-                  "Torna només codi Python, sense cap explicació."
-              ),
-          ]
-  
-          plotly_code = self.submit_prompt(message_log, kwargs=kwargs)
-  
-          return self._sanitize_plotly_code(self._extract_python_code(plotly_code))
+    def generate_plotly_code(
+        self,
+        question: str = None,
+        sql: str = None,
+        df_metadata: str = None,
+        chart_type: str = None,
+        **kwargs
+    ) -> str:
+        # Cargar el prompt base desde archivo externo
+        base_prompt = load_prompt_from_file('prompts/initial_prompt_graficas.txt')
+    
+        # Empieza con el contenido del prompt base
+        system_msg = base_prompt
+    
+        # Opcional: puedes inyectar la pregunta, la SQL o el df_metadata si quieres
+        if question:
+            system_msg += f"\n\n=== Pregunta original de l'usuari ===\n{question}"
+    
+        if sql:
+            system_msg += f"\n\n=== Consulta SQL que ha generat el DataFrame ===\n{sql}"
+    
+        if df_metadata:
+            system_msg += f"\n\n=== Estructura del DataFrame (`df_metadata`) ===\n{df_metadata}"
+    
+        # Si el usuario ha forzado un tipo de gráfico
+        if chart_type:
+            system_msg += (
+                f"\n\n⚠️ El gràfic ha de ser de tipus: **{chart_type}**. "
+                "No generis cap altre tipus encara que el DataFrame suggereixi una altra opció."
+            )
+    
+        # Construir el message_log para enviar al LLM
+        message_log = [
+            self.system_message(system_msg),
+            self.user_message(
+                "Assumeix que ja existeix un DataFrame anomenat `df` amb les dades. "
+                "No creïs un DataFrame nou ni afegeixis dades fictícies. "
+                "Mostra només el codi Python amb Plotly per visualitzar `df`, sense cap explicació addicional."
+            ),
+        ]
+    
+        # Llamar al LLM
+        plotly_code = self.submit_prompt(message_log, **kwargs)
+    
+        # Limpiar el código si hace falta
+        return self._sanitize_plotly_code(self._extract_python_code(plotly_code))
+
   
       # ----------------- Connect to Any Database to run the Generated SQL ----------------- #
   
