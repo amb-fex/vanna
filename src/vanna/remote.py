@@ -101,32 +101,11 @@ class VannaDefault(VannaDB_VectorStore):
             )
              
 
-
-
-
-        # 1. Agregar instrucciones claras la satatic_docu respuesta
-        initial_prompt += (
-            "===Directrius de resposta\n"
-            "1. Si el context proporcionat és suficient, genera una consulta SQL sense cap explicació.\n"
-            "2. Si el context és gairebé suficient però falta una cadena específica, genera una consulta SQL intermèdia comentada com 'intermediate_sql'.\n"
-            "3. Assegura't que les funcions SQL com ROUND(...) tanquin correctament els parèntesis i que l’ús de AS sigui sintàcticament correcte.\n"
-            "4. Si el context no és suficient, indica-ho explícitament.\n"
-            "5. Fes servir les taules més rellevants.\n"
-            "6. Si la pregunta ja té resposta, repeteix la resposta exacta.\n"
-            f"7. Assegura que la sortida SQL sigui compatible amb {self.dialect}, executable i sense errors de sintaxi.\n"
-            "8. Només pots respondre generant una consulta SQL o indicant explícitament que no pots generar-la. No pots escriure missatges de conversa, salutacions o comentaris personals.\n"
-            "9. En subconsultes (CTE o SELECT dins d’un WITH), utilitza només les columnes disponibles en la subconsulta immediata. No reutilitzis àlies de taula (com `u` o `d`) si no han estat definits explícitament en aquest nivell.\n"
-
-        )
-
-          # 3. Agregar DDL (estructura de tablas)
+   
+          # 1. Agregar DDL (estructura de tablas)
         initial_prompt = self.add_ddl_to_prompt(
             initial_prompt, ddl_list, max_tokens=self.max_tokens
         )
-
-        # 1. Primero agregar static_documentation si existe
-        #if self.static_documentation != "":
-            #doc_list = [static_documentation] + doc_list  # Añadimos static_documentation al principio
 
         # 2. Agregar documentación
         initial_prompt = self.add_documentation_to_prompt(
