@@ -6,6 +6,14 @@ import torch
 from datetime import datetime
 
 class AmbVannaCodigo(ModeloAMB, AMB_VectorStore):
+
+  """
+    Clase específica para la generación de código Python de mapa y grafico a partir de prompts en lenguaje natural.
+
+    Hereda la configuración general del modelo LLM desde ModeloAMB y las funcionalidades de recuperación semántica desde AMB_VectorStore.
+    Esta implementación está diseñada para recibir instrucciones sobre visualización de datos, generar el código necesario
+    """
+  
     def __init__(self, config=None):
         super().__init__(config=config)
         AMB_VectorStore.__init__(self, config=config)
@@ -64,13 +72,5 @@ class AmbVannaCodigo(ModeloAMB, AMB_VectorStore):
 
         return response
     
-    def system_message(self, message: str) -> dict:
-        return {"role": "system", "content": message}
-
-    def user_message(self, message: str) -> dict:
-        return {"role": "user", "content": message}
-
-    def assistant_message(self, message: str) -> dict:
-        return {"role": "assistant", "content": message}
 
     
