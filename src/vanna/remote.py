@@ -2,6 +2,7 @@ import dataclasses
 import json
 from io import StringIO
 from typing import Callable, List, Tuple, Union
+from datetime import datetime
 
 import pandas as pd
 import requests
@@ -38,7 +39,6 @@ from .vannadb import VannaDB_VectorStore
 
 import plotly
 import plotly.graph_objs as go
-import pandas as pd
 import traceback
 from typing import Union, Tuple
 
@@ -190,9 +190,6 @@ class VannaDefault(VannaDB_VectorStore):
         return self.extract_sql_query(sql)
 
 
- # Si el prompt és un string pla, l'envoltem com a missatge 'user'
-        #if isinstance(prompt, str):
-            #prompt = [{"role": "user", "content": prompt}]
 
     def submit_prompt(self, prompt, **kwargs) -> str:
         """
