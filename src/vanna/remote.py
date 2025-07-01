@@ -172,8 +172,21 @@ class VannaDefault(VannaDB_VectorStore):
 
 
 
-        return sql
-
+    def submit_prompt(self, prompt, **kwargs) -> str:
+      # JSON-ify the prompt
+      json_prompt = json.dumps(prompt, ensure_ascii=False)
+  
+      params = [StringData(data=json_prompt)]
+  
+      d = self._rpc_call(method="submit_prompt", params=params)
+  
+      if "result" not in d:
+          return None
+  
+      # Load the result into a dataclass
+      results = StringData(**d["result"])
+  
+      return results.data
     
     def generate_sql(self, question: str, **kwargs) -> str:
         # Usa la función base de Vanna
@@ -186,62 +199,7 @@ class VannaDefault(VannaDB_VectorStore):
         # Corrección de errores comunes como 'any' mal usado
         sql = self.corregir_sql_any(sql)
 
-        # Extrae la SQL final (por si viene con bloques adicionales)
-        return self.extract_sql_query(sql)
-
-
-
-    def submit_prompt(self, prompt, **kwargs) -> str:
-        """
-
-        
-Envía un prompt al modelo de lenguaje y devuelve la resposta generada.
-        
-        """
-
-       
-        if prompt[0]["role"] == "system":
-            system_msg = prompt[0]["content"]
-            # Pegamos esta instrucción al principio de la primera 'user'
-            for i in range(1, len(prompt)):
-                if prompt[i]["role"] == "user":
-                    prompt[i]["content"] = system_msg + "\n\n" + prompt[i]["content"]
-                    break
-            prompt = prompt[1:]  # Eliminamos el 'system' ya que ya lo usamos
-
-        #  Mostrem el prompt abans de la generació
-        print("=== Prompt tokens decodificats ===")
-        for p in prompt:
-            print(f"{p['role']}: {p['content']}")
-
-        # Apliquem el format de plantilla segons el model
-        full_prompt = self.tokenizer.apply_chat_template(
-            prompt,
-            tokenize=False,
-            add_generation_prompt=True,
-            date_string=datetime.today().strftime("%Y-%m-%d")
-        )
-
-
-        # Codifiquem el prompt
-        input_ids = self.tokenizer.encode(full_prompt, return_tensors="pt").to(self.model.device)
-
-        print("\n==== PROMPT REAL AL MODELO ====\n", full_prompt)
-        print("\n==== LONGITUD (tokens) ====\n", len(input_ids[0]))
-
-        # Generem la resposta
-        outputs = self.model.generate(
-            input_ids,
-            max_new_tokens=8000,
-            eos_token_id=self.tokenizer.eos_token_id,
-            do_sample=False,
-            temperature=0.2,
-            top_p=1.0,
-        )
-
-        # Extraiem només la part generada
-        response = outputs[0][input_ids.shape[-1]:]
-        response = self.tokenizer.decode(response, skip_special_tokens=True)
+      
 
         self.log(response)
 
